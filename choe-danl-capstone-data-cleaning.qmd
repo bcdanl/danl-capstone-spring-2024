@@ -1,0 +1,155 @@
+---
+title: Determinants of Financial Literacy at SUNY Geneseo
+author: 
+  - Alexis Kruzicki
+  - Isabella Nicastro
+  - Byeong-Hak Choe
+date: last-modified
+categories: [data-analysis, code, r, financial-literacy]
+
+execute: 
+  warning: false
+  message: false
+  
+toc: true
+---
+```{r}
+#| include: false
+
+library(knitr)
+library(rmarkdown)
+library(tidyverse)
+library(skimr)
+library(ggthemes)
+library(hrbrthemes)
+
+theme_set(theme_ipsum()+
+          theme(strip.background =element_rect(fill="lightgray"),
+                axis.title.x  = element_text(angle = 0,
+                                            size = rel(1.5),
+                                            margin = margin(10,0,0,0)),
+                axis.title.y  = element_text(angle = 0,
+                                            size = rel(1.5),
+                                            margin = margin(0,10,0,0))
+                )
+          )
+```
+
+
+
+
+# Introduction
+
+
+# Background
+
+
+## Research Question(s)
+
+
+# Empirical Analysis
+
+## Preparation of Data
+
+```{r}
+df <- read_csv("survey-raw.csv")
+
+
+var_desc <- colnames(df)
+colnames(df) <- c("time_stamp",
+                  "email",
+                  "score",
+                  "grad_yr",
+                  "county",
+                  "year_geneseo",
+                  "transfer",
+                  "major",
+                  "minor",
+                  "prof_program",
+                  "graduate_degree",
+                  "self_eval",
+                  "age_first_job",
+                  "file_tax",
+                  "college_fund",
+                  "parent_job",
+                  "credit_card",
+                  "age_credit_card",
+                  "pay_rent",
+                  "own_house",
+                  "car_payment",
+                  "brokerage_acct",
+                  "fnce_course_b4",
+                  "fnce_course_geneseo",
+                  "q1_inflation",
+                  "q2_mortgage_int",
+                  "q3_401k",
+                  "q4_risk_return",
+                  "q5_comp_int",
+                  "q6_apr",
+                  "q7_trap",
+                  "gold")
+
+df_clean <- df |> 
+  filter(is.na(q7_trap) | q7_trap == "To prepare for unexpected expenses") |> 
+  mutate(score = as.integer(str_sub(score, 1, 1))) |> 
+  mutate(year_geneseo = case_when(str_detect(year_geneseo, "First") ~ "First",
+                                  str_detect(year_geneseo, "Second") ~ "Second",
+                                  str_detect(year_geneseo, "Third") ~ "Third",
+                                  str_detect(year_geneseo, "Fourth") ~ "Fourth",
+                                  str_detect(year_geneseo, "Grad") ~ "Grad",
+                                  str_detect(year_geneseo, "Prefer") ~ NA,
+                                  ),
+         year_geneseo = factor(year_geneseo,
+                               levels = c("First", "Second", "Third", "Fourth", "Grad"))
+         ) |> 
+  mutate(age_first_job_raw = age_first_job, .after = age_first_job) |> 
+  mutate(age_first_job = case_when(str_detect(age_first_job, "15") ~ "15",
+                                  str_detect(age_first_job, "16") ~ "16",
+                                  str_detect(age_first_job, "17") ~ "17",
+                                  str_detect(age_first_job, "18") ~ "18",
+                                  str_detect(age_first_job, "19") ~ "19",
+                                  str_detect(age_first_job, "20") ~ "20",
+                                  str_detect(age_first_job, "Prefer") ~ NA,
+                                  )
+         ) |> 
+  mutate(file_tax = case_when(str_detect(file_tax, "Done") ~ "Yes",
+                                  str_detect(file_tax, "I did not") ~ "No",
+                                  str_detect(file_tax, "My parents") ~ "Parents",
+                                  str_detect(file_tax, "My accountant") ~ "Parents",
+                                  str_detect(file_tax, "My family") ~ "Parents",
+                                  str_detect(file_tax, "Yes") ~ "Yes",
+                                  str_detect(file_tax, "No") ~ "No",
+                                  str_detect(file_tax, "Prefer") ~ NA,
+                                  ))
+  
+```
+
+
+```{r}
+
+```
+
+```{r}
+skim(df)
+```
+
+
+Below line removes observations ....
+```{r}
+  
+```
+
+
+
+
+
+# Significance of the Study
+
+
+
+
+
+#
+
+
+
