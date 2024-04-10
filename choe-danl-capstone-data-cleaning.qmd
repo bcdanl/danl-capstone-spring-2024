@@ -123,8 +123,16 @@ df_clean <- df |>
                                   )) |> 
   select(-(time_stamp:email)) |> 
   select(-q7_trap) |> 
-  mutate(id_respondent = row_number(), .before = 1) |> 
-  
+  mutate(id_respondent = row_number(), .before = 1) |>
+  mutate(year_geneseo = ifelse(!is.na(graduate_degree), 
+                               "Grad", year_geneseo) ) |> 
+  mutate(year_upper_lower = ifelse(year_geneseo == 'First' | 
+                                     year_geneseo == 'Second',
+                                   'Underclassmen', 
+                                   ifelse(year_geneseo == "Grad",
+                                          'Graduates', 'Upperclassmen')),
+         .after = year_geneseo
+         ) 
 
 
 ```
@@ -138,6 +146,8 @@ df_clean_sum <- skim(df_clean) |>
 # prof_program
 # minor
 
+df_clean |> 
+  count(year_geneseo)
 df_clean |> 
   count(graduate_degree)
 df_clean |> 
