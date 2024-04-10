@@ -27,6 +27,7 @@ library(tidyverse)
 library(skimr)
 library(ggthemes)
 library(hrbrthemes)
+library(stargazer)
 
 theme_set(theme_ipsum()+
           theme(strip.background =element_rect(fill="lightgray"),
@@ -162,7 +163,6 @@ df_clean <- df |>
          ) |> 
   # Alexis
   mutate(credit_card = case_when(str_detect(credit_card, "I use my parent's credit card") ~ "Parents",
-
                                   str_detect(credit_card, "Yes") ~ "Yes",
                                   str_detect(credit_card, "No") ~ "No",
                                   str_detect(credit_card, "Prefer") ~ NA,
@@ -281,7 +281,9 @@ I never owned a credit card") ~ "Never",
            sep = ', ') |> 
   relocate(grad_yr, .before = year_geneseo) |> 
   relocate(major_1, major_2, .after = year_upper_lower) |> 
-  relocate(minor_1, minor_2, .after = major_2) |> 
+  relocate(minor_1, minor_2, .after = major_2) 
+
+df_clean <- df_clean |> 
   left_join(major_1_cat) |>
   left_join(major_2_cat) |> 
   left_join(minor_1_cat) |> 
@@ -306,9 +308,53 @@ I never owned a credit card") ~ "Never",
          q6_apr = ifelse(str_detect(q6_apr, "It is calculated by multiplying"), 1, 0),
          age_first_job = as.integer(age_first_job),
          college_fund = ifelse(college_fund == "Yes", 1,
-                               ifelse(college_fund == "No", 0 , NA))
+                               ifelse(college_fund == "No", 0 , NA)),
+         age_18_card = ifelse(is.na(age_18_card), 0 , age_18_card)
+         ) |> 
+  mutate(major = "", .after = year_upper_lower) |> 
+  mutate(
+         major = ifelse(dept_major_1 == "Education" | dept_major_2 == "Education",
+                        "Education", major),
+
+         major = ifelse(dept_major_1 == "School of Business" | dept_major_2 == "School of Business", "School of Business", major)
+  ) |> 
+  filter(grad_yr != "Received a GED") |> 
+  mutate(major = ifelse( dept_major_1 %in% c("Biology", 
+                                             "Mathematics",
+                                             "Geology", 
+                                             "Chemistry", 
+                                             "Neuroscience", 
+                                             "Geography",
+                                             "Physics",
+                                             "Geography and Sustainability Studies"), 
+                         "STEM", major),
+         major = ifelse( dept_major_2 %in% c("Biology", 
+                                             "Mathematics",
+                                             "Geology", 
+                                             "Chemistry", 
+                                             "Neuroscience", 
+                                             "Geography",
+                                             "Physics",
+                                             "Geography and Sustainability Studies"), 
+                         "STEM", major))
+
+df_clean <- df_clean |> 
+  mutate(major = ifelse(is.na(major) & dept_major_1 == "Education", "Education", major),
+         major = ifelse(is.na(major) & dept_major_2 == "Education", "Education", major),)
+
+
+df_clean <- df_clean |> 
+  mutate(major = ifelse(is.na(major), "Non-STEM", major),
+         major = ifelse(major == "", "Non-STEM", major)
          )
 
+major_1_count <- df_clean |> 
+  count(dept_major_1) |> 
+  arrange(-n)
+
+major_2_count <- df_clean |> 
+  count(dept_major_2) |> 
+  arrange(-n)
 ```
 
 
@@ -332,17 +378,34 @@ df_clean_sum <- skim(df_clean) |>
 df_clean_ML <- df_clean |> 
   select(-id_respondent, 
          -score, -score_scaled, 
-         -self_eval, -self_eval_scaled,
+         -self_eval,
          -county, -year_geneseo,
          -major_1, -major_2, -minor_1, -minor_2,
          -prof_program, -graduate_degree,
-         ) 
+         ) |> 
+  mutate(dept_major_2 = ifelse(!is.na(dept_major_2), 1, 0),
+         dept_minor_1 = ifelse(!is.na(dept_minor_1), 1, 0),
+         dept_minor_2 = ifelse(!is.na(dept_minor_2), 1, 0)
+         ) |> 
+  drop_na()
+
+df_clean_ML_sum <- skim(df_clean_ML) |> 
+  arrange(-n_missing)
+
+dept_fnce <- df_clean_ML |> 
+  group_by(fnce_course_geneseo, major) |> 
+  count() |> 
+  arrange(fnce_course_geneseo, n)
+
 reg <- lm(data = df_clean_ML,
           score_pf ~ .)
 df_dummies <-  as.data.frame(model.matrix(reg))[, -1]
 df_dummies <- cbind(df_clean_ML$score_pf ,df_dummies)
 df_dummies <- df_dummies |> 
-  rename(beer_floz = `beer_mkt$beer_floz`)
+  rename(score_pf = `df_clean_ML$score_pf`)
+
+df_dummies_cor <- cor(df_dummies) |> 
+  as.data.frame()
 ```
 
 
