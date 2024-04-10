@@ -284,23 +284,31 @@ I never owned a credit card") ~ "Never",
            sep = ', ') |> 
   relocate(grad_yr, .before = year_geneseo) |> 
   relocate(major_1, major_2, .after = year_upper_lower) |> 
-  relocate(minor_1, minor_2, .after = major_2) 
-
-
-# |> 
-#   left_join(major_1_cat) |> 
-#   left_join(major_2_cat) |> 
-#   left_join(minor_1_cat) |> 
-#   left_join(minor_2_cat) |> 
-#   mutate(minor_2 = ifelse(minor_1 == "anthropology and biology",
-#                           "Biology", minor_2),
-#          minor_2 = ifelse(minor_1 == "sustainability studies and biology",
-#                           "Biology", minor_2)
-#          ) |> 
-#   relocate(dept_major_1, .after = major_1) |> 
-#   relocate(dept_major_2, .after = major_2) |> 
-#   relocate(dept_minor_1, .after = minor_1) |> 
-#   relocate(dept_minor_2, .after = minor_2)
+  relocate(minor_1, minor_2, .after = major_2) |> 
+  left_join(major_1_cat) |>
+  left_join(major_2_cat) |> 
+  left_join(minor_1_cat) |> 
+  left_join(minor_2_cat |> filter(!is.na(minor_2))) |> 
+  mutate(minor_2 = ifelse(minor_1 == "anthropology and biology",
+                          "Biology", minor_2),
+         minor_2 = ifelse(minor_1 == "sustainability studies and biology",
+                          "Biology", minor_2)
+         ) |>
+  relocate(dept_major_1, .after = major_1) |>
+  relocate(dept_major_2, .after = major_2) |>
+  relocate(dept_minor_1, .after = minor_1) |>
+  relocate(dept_minor_2, .after = minor_2) |> 
+  mutate(transfer = ifelse(transfer == "Yes", 1, 0)) |> 
+  select(-age_first_job_raw, -parent_job, -age_credit_card,
+         -brokerage_acct) |> 
+  mutate(q1_inflation = ifelse(q1_inflation == "The same amount as today", 1, 0),
+         q2_mortgage_int = ifelse(q2_mortgage_int == "TRUE", 1, 0),
+         q3_401k = ifelse(str_detect(q3_401k, "Either before"), 1, 0),
+         q4_risk_return = ifelse(q4_risk_return == "TRUE", 1, 0),
+         q5_comp_int = ifelse(q5_comp_int == "More than $102", 1, 0),
+         q6_apr = ifelse(str_detect(q6_apr, "It is calculated by multiplying"), 1, 0)
+         )
+    
   
 
 
