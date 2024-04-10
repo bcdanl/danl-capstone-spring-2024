@@ -54,7 +54,6 @@ theme_set(theme_ipsum()+
 ```{r}
 df <- read_csv("survey-raw.csv")
 
-
 var_desc <- colnames(df)
 colnames(df) <- c("time_stamp",
                   "email",
@@ -88,6 +87,8 @@ colnames(df) <- c("time_stamp",
                   "q6_apr",
                   "q7_trap",
                   "gold")
+
+# df$self_eval_scaled <- scale(df$self_eval)
 
 df_clean <- df |> 
   filter(is.na(q7_trap) | q7_trap == "To prepare for unexpected expenses") |> 
@@ -132,8 +133,103 @@ df_clean <- df |>
                                    ifelse(year_geneseo == "Grad",
                                           'Graduates', 'Upperclassmen')),
          .after = year_geneseo
-         ) 
+         ) |> 
+  # Alexis
+  mutate(credit_card = case_when(str_detect(credit_card, "I use my parent's credit card") ~ "Parents",
 
+                                  str_detect(credit_card, "Yes") ~ "Yes",
+                                  str_detect(credit_card, "No") ~ "No",
+                                  str_detect(credit_card, "Prefer") ~ NA,
+                                  )) |>
+  mutate(age_credit_card = case_when(str_detect(age_credit_card, "Before age 18") ~ "b_18",
+                                  str_detect(age_credit_card, "At or after age 18") ~ "a_18",
+                                  str_detect(age_credit_card, " 
+I never owned a credit card") ~ "Never",
+                                  str_detect(age_credit_card, "Prefer") ~ NA
+                                  )) |> 
+  mutate(pay_rent = case_when(str_detect(pay_rent, "Live on campus") ~ "On_Campus",
+                                  str_detect(pay_rent, "Yes") ~ "Yes",
+                                  str_detect(pay_rent, "No") ~ "No",
+                                  str_detect(pay_rent, "Prefer") ~ NA,
+                                  ))|>
+  mutate(own_house = case_when(str_detect(own_house, "Yes") ~ "Yes",
+                                  str_detect(own_house, "No") ~ "No",
+                                  str_detect(own_house, "Prefer") ~ NA,
+                                  ))|>
+  mutate(car_payment = case_when(str_detect(car_payment, "Yes") ~ "Yes",
+                                  str_detect(car_payment, "No") ~ "No",
+                                  str_detect(car_payment, "Prefer") ~ NA,
+                                  )) |> 
+  mutate(score_pf = ifelse(score >= 4, 1, 0), .after = score) |> 
+  relocate(self_eval, .after = score_pf) |> 
+  mutate(score_scaled = scale(score), .after = score_pf) |> 
+  mutate(self_eval_scaled = scale(self_eval), .after = self_eval) |> 
+  mutate(over_confidence = self_eval_scaled - score_scaled, .after = score_pf) |> 
+  mutate(MSA = case_when(  # https://dol.ny.gov/new-york-state-geography
+    str_detect(county, paste(c("Albany", "Rensselaer", "Saratoga", "Schenectady", "Schoharie"), collapse = '|') ) ~ "Albany-Schenectady-Troy",
+    str_detect(county, paste(c("Broome", "Tioga"), collapse = '|') ) ~ "Binghamton",
+    str_detect(county, paste(c("Erie", "Niagara"), collapse = '|') ) ~ "Buffalo-Niagara Falls",
+    str_detect(county, paste(c("Chemung"), collapse = '|') ) ~ "Elmira",
+    str_detect(county, paste(c("Warren", "Washington"), collapse = '|') ) ~ "Glens Falls",
+    str_detect(county, paste(c("Tompkins"), collapse = '|') ) ~ "Ithaca",
+    str_detect(county, paste(c("Kingston"), collapse = '|') ) ~ "Ulster",
+    str_detect(county, paste(c("Bronx", "Kings", "New York", "Queens", "Richmond"), collapse = '|') ) ~ "New York City Metropolitan Area",
+    str_detect(county, paste(c("Orange", "Rockland", "Westchester"), collapse = '|') ) ~ "Orange-Rockland-Westchester",
+    str_detect(county, paste(c("Livingston", "Monroe", "Ontario", "Orleans", "Wayne", "Yates"), collapse = '|') ) ~ "Rochester",
+    str_detect(county, paste(c("Madison", "Onondaga", "Oswego"), collapse = '|') ) ~ "Syracuse",
+    str_detect(county, paste(c("Herkimer", "Oneida"), collapse = '|') ) ~ "Utica-Rome",
+    str_detect(county, paste(c("Jefferson"), collapse = '|') ) ~ "Watertown-Fort Drum",
+    str_detect(county, paste(c("Dutchess", "Putnam"), collapse = '|') ) ~ "Dutchess-Putnam",
+    str_detect(county, paste(c("Nassau", "Suffolk"), collapse = '|') ) ~ "Nassau-Suffolk",
+    str_detect(county, paste(c("high school"), collapse = '|') ) ~ "Outside NY",
+    str_detect(county, paste(c("Allegany", "Cattaraugus", "Cayuga", "Chautauqua",
+                               "Chenango", "Clinton", "Columbia", "Cortland",
+                               "Delaware", "Essex", "Franklin", "Fulton",
+                               "Genesee", "Greene", "Hamilton", "Lewis",
+                               "Montgomery", "Otsego", "Saint Lawrence", "Schuyler",
+                               "Seneca", "Steuben", "Sullivan", "Wyoming"), collapse = '|') ) ~ "Non-MSA",
+    ), .after = county
+    ) |> 
+  mutate(college_fund = case_when(
+    college_fund == "No" ~ "No",
+    college_fund == "Parents Pay for college tuition" ~ "Yes",
+    college_fund == "Prefer to not respond" ~ "Prefer to not respond",
+    college_fund == "They set up a savings account with my own money" ~ "Yes",
+    college_fund == "Yes" ~ "Yes",
+    college_fund == "Yes, but got used for a car instead" ~ "Yes",
+    college_fund == "military/educational benefits" ~ "Yes",
+    college_fund == "not sure" ~ "Prefer to not respond"
+  )) |> 
+  mutate(prof_program_TF = ifelse(is.na(prof_program),
+                                  0, 1), .after = prof_program) |> 
+  mutate(parent_job_TF = case_when(
+    parent_job == "Accounting" ~ 1,
+    parent_job == "Insurance" ~ 1,
+    parent_job == "No" ~ 0,
+    parent_job == "One parent used to work for a bank for 17+ years" ~ 1,
+    parent_job == "Prefer to not respond" ~ NA,
+    parent_job == "Yes" ~ 0,
+    parent_job == "healthcare and Law" ~ 0,
+    parent_job == "mom is partly involved in real estate" ~ 1,
+    parent_job == "mom used to" ~ 1,
+    parent_job == "my dad is a mortgage broker" ~ 1,
+  ), .after = parent_job) |> 
+  mutate(age_18_card = ifelse(age_credit_card == 'a_18',
+                              1, 
+                              ifelse(age_credit_card == 'b_18',
+                                     0, NA)),
+         .after = age_credit_card) |> 
+  mutate(own_house = ifelse(own_house == "No", 0, 1)) |> 
+  mutate(car_payment = ifelse(car_payment == 'No',
+                              0, 
+                              ifelse(car_payment == 'Yes',
+                                     1, NA)),
+         fnce_course_b4 = ifelse(fnce_course_b4 == 'No',
+                              0, 
+                              ifelse(fnce_course_b4 == 'Yes',
+                                     1, NA)),
+         )
+  
 
 ```
 
@@ -152,9 +248,16 @@ df_clean |>
   count(graduate_degree)
 df_clean |> 
   count(prof_program)
+
 df_clean |> 
-  count(minor)
+  count(parent_job)
+
+county_sum <- df_clean |> 
+  count(county) |> 
+  arrange(-n)
 ```
+
+
 
 
 # Alexis
@@ -166,7 +269,6 @@ df_clean |>
 
 
 # Significance of the Study
-
 
 
 
