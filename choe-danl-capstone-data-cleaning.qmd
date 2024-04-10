@@ -1,11 +1,16 @@
 ---
 title: Determinants of Financial Literacy at SUNY Geneseo
+subtitle: ""
 author: 
   - Alexis Kruzicki
   - Isabella Nicastro
-  - Byeong-Hak Choe
+  - Byeong-Hak Choe (Advisor)
+institute: 
+  - Accounting and Data Analytics
+  - Finance and Data Analytics
+  - Data Analytics and Economics
 date: last-modified
-categories: [data-analysis, code, r, financial-literacy]
+categories: [financial-literacy, data-cleaning, machine-learning, data-visualization, r, quarto]
 
 execute: 
   warning: false
@@ -52,6 +57,9 @@ theme_set(theme_ipsum()+
 ## Preparation of Data
 
 ```{r}
+#| warning: false
+#| message: false
+
 df <- read_csv("survey-raw.csv")
 
 var_desc <- colnames(df)
@@ -88,7 +96,28 @@ colnames(df) <- c("time_stamp",
                   "q7_trap",
                   "gold")
 
-# df$self_eval_scaled <- scale(df$self_eval)
+
+major_cat <- read_csv('major_category.csv')
+minor_cat <- read_csv('minor_category.csv')
+
+major_1_cat <- major_cat |> 
+  select(ends_with('1')) |> 
+  distinct() |> 
+  rename(dept_major_1 = dept_1)
+major_2_cat <- major_cat |> 
+  select(ends_with('2')) |> 
+  distinct() |> 
+  rename(dept_major_2 = dept_2)
+
+minor_1_cat <- minor_cat |> 
+  select(ends_with('1')) |> 
+  distinct() |> 
+  rename(dept_minor_1 = dept_1)
+minor_2_cat <- minor_cat |> 
+  select(ends_with('2')) |> 
+  distinct() |> 
+  rename(dept_minor_2 = dept_2)
+
 
 df_clean <- df |> 
   filter(is.na(q7_trap) | q7_trap == "To prepare for unexpected expenses") |> 
@@ -228,8 +257,53 @@ I never owned a credit card") ~ "Never",
                               0, 
                               ifelse(fnce_course_b4 == 'Yes',
                                      1, NA)),
-         )
+         fnce_course_geneseo = ifelse(fnce_course_geneseo == 'No',
+                               "0", 
+                               ifelse(fnce_course_geneseo == 'Yes, only one course',
+                                     "1", 
+                                     ifelse(fnce_course_geneseo == 'Yes, more than one course', "1+", NA))),
+         ) |> 
+  mutate(brokerage_acct = ifelse(brokerage_acct == "I am using a financial advisor to invest my savings, unsure of the status of that", "No", brokerage_acct),
+         brokerage_acct = ifelse(str_detect(brokerage_acct, "I never set any of this up"), "No", brokerage_acct),
+         brokerage_acct = ifelse(str_detect(brokerage_acct, "Teacher's Retirement"), "No", brokerage_acct),
+         brokerage_acct = ifelse(str_detect(brokerage_acct, "No, however am currently in process of doing so"), "No", brokerage_acct),
+         q_IRA = ifelse(str_detect(brokerage_acct, "IRA"), 1, 0),
+         q_stock = ifelse(str_detect(brokerage_acct, "stock"), 1, 0),
+         q_CDs = ifelse(str_detect(brokerage_acct, "CDs"), 1, 0),
+         q_brockerage = ifelse(str_detect(brokerage_acct, "brockerage"), 1, 0),
+         q_bonds = ifelse(str_detect(brokerage_acct, "bonds"), 1, 0),
+         q_options = ifelse(str_detect(brokerage_acct, "options"), 1, 0),
+         q_crypto = ifelse(str_detect(brokerage_acct, "crypto"), 1, 0),
+         q_yes = ifelse(brokerage_acct == "No", 0, 
+                        ifelse(brokerage_acct == "Prefer to not respond", NA, 1)),
+         .before = brokerage_acct
+         ) |> 
+  separate(major, into = c('major_1', 'major_2'),
+           sep = ', ') |> 
+  separate(minor, into = c('minor_1', 'minor_2'),
+           sep = ', ') |> 
+  relocate(grad_yr, .before = year_geneseo) |> 
+  relocate(major_1, major_2, .after = year_upper_lower) |> 
+  relocate(minor_1, minor_2, .after = major_2) 
+
+
+# |> 
+#   left_join(major_1_cat) |> 
+#   left_join(major_2_cat) |> 
+#   left_join(minor_1_cat) |> 
+#   left_join(minor_2_cat) |> 
+#   mutate(minor_2 = ifelse(minor_1 == "anthropology and biology",
+#                           "Biology", minor_2),
+#          minor_2 = ifelse(minor_1 == "sustainability studies and biology",
+#                           "Biology", minor_2)
+#          ) |> 
+#   relocate(dept_major_1, .after = major_1) |> 
+#   relocate(dept_major_2, .after = major_2) |> 
+#   relocate(dept_minor_1, .after = minor_1) |> 
+#   relocate(dept_minor_2, .after = minor_2)
   
+
+
 
 ```
 
@@ -237,24 +311,6 @@ I never owned a credit card") ~ "Never",
 ```{r}
 df_clean_sum <- skim(df_clean) |> 
   arrange(-n_missing)
-
-# graduate_degree
-# prof_program
-# minor
-
-df_clean |> 
-  count(year_geneseo)
-df_clean |> 
-  count(graduate_degree)
-df_clean |> 
-  count(prof_program)
-
-df_clean |> 
-  count(parent_job)
-
-county_sum <- df_clean |> 
-  count(county) |> 
-  arrange(-n)
 ```
 
 
