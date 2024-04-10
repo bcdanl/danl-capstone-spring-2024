@@ -120,36 +120,43 @@ df_clean <- df |>
                                   str_detect(file_tax, "Yes") ~ "Yes",
                                   str_detect(file_tax, "No") ~ "No",
                                   str_detect(file_tax, "Prefer") ~ NA,
-                                  ))
+                                  )) |> 
+  select(-(time_stamp:email)) |> 
+  select(-q7_trap) |> 
+  mutate(id_respondent = row_number(), .before = 1) |> 
   
+
+
 ```
 
 
 ```{r}
+df_clean_sum <- skim(df_clean) |> 
+  arrange(-n_missing)
 
+# graduate_degree
+# prof_program
+# minor
+
+df_clean |> 
+  count(graduate_degree)
+df_clean |> 
+  count(prof_program)
+df_clean |> 
+  count(minor)
 ```
 
-```{r}
-skim(df)
-```
+
+# Alexis
 
 
-Below line removes observations ....
-```{r}
-  
-```
-
+# Isabella's Data Viz
 
 
 
 
 # Significance of the Study
 
-
-
-
-
-#
 
 
 
