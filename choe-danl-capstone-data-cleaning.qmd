@@ -128,10 +128,7 @@ df_clean <- df |>
                                   str_detect(year_geneseo, "Fourth") ~ "Fourth",
                                   str_detect(year_geneseo, "Grad") ~ "Grad",
                                   str_detect(year_geneseo, "Prefer") ~ NA,
-                                  ),
-         year_geneseo = factor(year_geneseo,
-                               levels = c("First", "Second", "Third", "Fourth", "Grad"))
-         ) |> 
+                                  )) |> 
   mutate(age_first_job_raw = age_first_job, .after = age_first_job) |> 
   mutate(age_first_job = case_when(str_detect(age_first_job, "15") ~ "15",
                                   str_detect(age_first_job, "16") ~ "16",
@@ -306,12 +303,11 @@ I never owned a credit card") ~ "Never",
          q3_401k = ifelse(str_detect(q3_401k, "Either before"), 1, 0),
          q4_risk_return = ifelse(q4_risk_return == "TRUE", 1, 0),
          q5_comp_int = ifelse(q5_comp_int == "More than $102", 1, 0),
-         q6_apr = ifelse(str_detect(q6_apr, "It is calculated by multiplying"), 1, 0)
+         q6_apr = ifelse(str_detect(q6_apr, "It is calculated by multiplying"), 1, 0),
+         age_first_job = as.integer(age_first_job),
+         college_fund = ifelse(college_fund == "Yes", 1,
+                               ifelse(college_fund == "No", 0 , NA))
          )
-    
-  
-
-
 
 ```
 
@@ -324,10 +320,30 @@ df_clean_sum <- skim(df_clean) |>
 
 
 
-# Alexis
+# Alexis' Data Viz
 
 
 # Isabella's Data Viz
+
+
+# Byeong-Hak's ML
+
+```{r}
+df_clean_ML <- df_clean |> 
+  select(-id_respondent, 
+         -score, -score_scaled, 
+         -self_eval, -self_eval_scaled,
+         -county, -year_geneseo,
+         -major_1, -major_2, -minor_1, -minor_2,
+         -prof_program, -graduate_degree,
+         ) 
+reg <- lm(data = df_clean_ML,
+          score_pf ~ .)
+df_dummies <-  as.data.frame(model.matrix(reg))[, -1]
+df_dummies <- cbind(df_clean_ML$score_pf ,df_dummies)
+df_dummies <- df_dummies |> 
+  rename(beer_floz = `beer_mkt$beer_floz`)
+```
 
 
 
