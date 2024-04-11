@@ -439,7 +439,6 @@ df_ML2 <- df_dummies |>
 
 ```
 
-# Logit
 
 ```{r}
 
@@ -457,14 +456,10 @@ model <- glm(score_pf ~ .,
 model_lm <- lm(score ~ ., 
                data = df_ML2)
 
+summary(model_lm)
 ```
 
 
-```{r}
-#| results: asis
-
-stargazer(model, model_lm, type = 'html')
-```
 
 
 ```{r}
@@ -474,10 +469,22 @@ ame_result <- summary(m)
 ame_result
 ```
 
-
-
+## Regression Table
 
 ```{r}
+#| results: asis
+
+stargazer(model, model_lm, type = 'html',
+          omit = c("MSA", "grad_", "pay_",
+                   "college_fund"))
+
+```
+
+## Logit AME
+
+```{r ame-logit}
+#| fig-height: 7
+
 ggplot(data = ame_result |> 
          filter( p <= .1)) +
   geom_point( aes(y = reorder(factor, AME), x = AME) ) +
@@ -485,10 +492,37 @@ ggplot(data = ame_result |>
                     xmin = lower, xmax = upper),
                 width = .5) +
   geom_vline(xintercept = 0, color = 'red', linetype = 2) +
-  labs(y = "") +
+  labs(y = "",
+       title = "Logistic Regression Estimation",
+       subtitle = "Average Marginal Effect on Financial Literacy Scores") +
   scale_x_continuous(breaks = seq(-1,.4,.2),
-                     labels = scales::percent)
+                     labels = scales::percent) +
+  theme(plot.title = element_text(hjust = .5),
+        plot.subtitle = element_text(hjust = .5))
 ```
+## Linear Regression AME
+
+```{r beta-linear}
+#| fig-height: 7
+broom::tidy(model_lm, conf.int = T) |> 
+  filter(p.value <= .1) |> 
+  filter(!str_detect(term, "MSA")) |> 
+  ggplot() +
+  geom_point( aes(y = reorder(term, estimate), x = estimate)) +
+  geom_errorbar(aes(y = reorder(term, estimate), 
+                    xmin = conf.low, xmax = conf.high),
+                width = .5,) +
+  geom_vline(xintercept = 0, color = 'red', linetype = 2) +
+  labs(y = "",
+       x = "Beta Estimate",
+       title = "Linear Regression Estimation",
+       subtitle = "Effect on Financial Literacy Scores")  +
+  theme(plot.title = element_text(hjust = .5),
+        plot.subtitle = element_text(hjust = .5),
+        )
+```
+
+
 
 ```{r}
 df_clean |> 
@@ -513,7 +547,7 @@ df_ML |>
 ```
 
 
-# Random Forest
+## Classficiation Tree
 
 
 ```{r}
@@ -523,7 +557,7 @@ df_clean |>
 ```
 
 
-```{r}
+```{r tree-classification}
 library(rpart)
 library(rpart.plot)
 
@@ -532,22 +566,67 @@ rf <- rpart(score_pf ~ .,
 rf
 printcp(rf)
 rpart.plot(rf)
+# title("Classification Tree", cex.sub = .2)
 
 ```
 
-
-```{r}
+## Regression Tree
+```{r tree-regression}
 
 rf_reg <- rpart(score ~ .,
             data = df_ML2, method  = "anova")
 rf_reg
 printcp(rf_reg)
 rpart.plot(rf_reg)
+title("Regression Tree")
 
 ```
 
 
-# Significance of the Study
+## Random Forest - Variable Importance
+```{r vip}
+
+library(ranger)
+library(vip)
+fao_ranger1 <- ranger(score ~ ., 
+                        data = df_ML2, 
+                        mtry = 13, num.trees = 50,
+                        importance = "impurity")
+
+vip1 <- vip(fao_ranger1)
+
+df1 <- data.frame(
+    var = vip1[["data"]][["Variable"]],
+    imp = vip1[["data"]][["Importance"]]
+  ) %>% 
+    arrange(var)
+
+
+df1 |> 
+  ggplot(aes(x = imp, y = reorder(var, imp),
+             fill = reorder(var, imp))) +
+  geom_col(show.legend = F) +
+  scale_x_log10() +
+  labs(x = "Variable Importance",
+       y = "",
+       title = "Random Forest Estimation",
+       subtitle = "Varialbe Importance") +
+  scale_fill_manual(values = c("#E5F5E0" ,
+  "#CCE1CA" ,
+  "#B2CEB4" ,
+  "#99BA9E" ,
+  "#7FA688" ,
+  "#669373" ,
+  "#4C7F5D",
+  "#336B47",
+  "#195831" ,
+  "#00441B")) +
+  theme(plot.title = element_text(hjust = .5),
+        plot.subtitle = element_text(hjust = .5))
+
+
+```
+
 
 
 
