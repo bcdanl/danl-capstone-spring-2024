@@ -28,6 +28,7 @@ library(skimr)
 library(ggthemes)
 library(hrbrthemes)
 library(stargazer)
+library(margins)
 
 theme_set(theme_ipsum()+
           theme(strip.background =element_rect(fill="lightgray"),
@@ -42,18 +43,6 @@ theme_set(theme_ipsum()+
 ```
 
 
-
-
-# Introduction
-
-
-# Background
-
-
-## Research Question(s)
-
-
-# Empirical Analysis
 
 ## Preparation of Data
 
@@ -258,7 +247,7 @@ I never owned a credit card") ~ "Never",
                                "0", 
                                ifelse(fnce_course_geneseo == 'Yes, only one course',
                                      "1", 
-                                     ifelse(fnce_course_geneseo == 'Yes, more than one course', "1+", NA))),
+                                     ifelse(fnce_course_geneseo == 'Yes, more than one course', "More_than_1", NA))),
          ) |> 
   mutate(brokerage_acct = ifelse(brokerage_acct == "I am using a financial advisor to invest my savings, unsure of the status of that", "No", brokerage_acct),
          brokerage_acct = ifelse(str_detect(brokerage_acct, "I never set any of this up"), "No", brokerage_acct),
@@ -364,6 +353,24 @@ df_clean_sum <- skim(df_clean) |>
 ```
 
 
+```{r}
+#| warning: false
+df_clean |> 
+  mutate(grad_yr = factor(grad_yr, 
+                           levels = c("Prior to 2018", "2018", "2019", "2020", "2021", "2022", "2023"))) |> 
+  mutate(score_pf = ifelse(score_pf == 1, "Pass", "Fail")) |> 
+  filter(!is.na(grad_yr))|> 
+  ggplot(aes(fill = score_pf, y= grad_yr)) +
+  geom_bar(position = "fill") +
+  theme(legend.position = "top")+
+   scale_fill_manual(values = c("#9bbbae", "#065535"))+
+  guides(fill = guide_legend(reverse = T)) +
+  labs(title = "Graduation Year Pass Rate", 
+       x = "Percentage Pass", 
+       y = "High School\n Graduation Year",
+       fill = "Financial Literacy Quiz")
+```
+
 
 
 # Alexis' Data Viz
@@ -378,14 +385,26 @@ df_clean_sum <- skim(df_clean) |>
 df_clean_ML <- df_clean |> 
   select(-id_respondent, 
          -score, -score_scaled, 
-         -self_eval,
+         -self_eval, -self_eval_scaled,
          -county, -year_geneseo,
          -major_1, -major_2, -minor_1, -minor_2,
+         -starts_with("dept_"), 
+         -q1_inflation, -q2_mortgage_int, -q3_401k,
+         -q4_risk_return, -q5_comp_int, -q6_apr,
          -prof_program, -graduate_degree,
          ) |> 
-  mutate(dept_major_2 = ifelse(!is.na(dept_major_2), 1, 0),
-         dept_minor_1 = ifelse(!is.na(dept_minor_1), 1, 0),
-         dept_minor_2 = ifelse(!is.na(dept_minor_2), 1, 0)
+  drop_na()
+
+df_clean_ML2 <- df_clean |> 
+  select(-id_respondent, 
+         -score_pf, -score_scaled, 
+         -self_eval, -self_eval_scaled,
+         -county, -year_geneseo,
+         -major_1, -major_2, -minor_1, -minor_2,
+         -starts_with("dept_"), 
+         -q1_inflation, -q2_mortgage_int, -q3_401k,
+         -q4_risk_return, -q5_comp_int, -q6_apr,
+         -prof_program, -graduate_degree,
          ) |> 
   drop_na()
 
@@ -401,14 +420,131 @@ reg <- lm(data = df_clean_ML,
           score_pf ~ .)
 df_dummies <-  as.data.frame(model.matrix(reg))[, -1]
 df_dummies <- cbind(df_clean_ML$score_pf ,df_dummies)
-df_dummies <- df_dummies |> 
+df_ML <- df_dummies |> 
   rename(score_pf = `df_clean_ML$score_pf`)
+
 
 df_dummies_cor <- cor(df_dummies) |> 
   as.data.frame()
+
+
+reg <- lm(data = df_clean_ML2,
+          score ~ .)
+df_dummies <-  as.data.frame(model.matrix(reg))[, -1]
+df_dummies <- cbind(df_clean_ML2$score ,df_dummies)
+df_ML2 <- df_dummies |> 
+  rename(score = `df_clean_ML2$score`)
+
+
+
+```
+
+# Logit
+
+```{r}
+
+colnames(df_ML) <- str_replace_all(colnames(df_ML), " ", "_")
+colnames(df_ML) <- str_replace_all(colnames(df_ML), "-", "_")
+
+colnames(df_ML2) <- str_replace_all(colnames(df_ML2), " ", "_")
+colnames(df_ML2) <- str_replace_all(colnames(df_ML2), "-", "_")
+
+model <- glm(score_pf ~ ., 
+             data = df_ML, 
+             family = binomial(link = "logit") )
+
+
+model_lm <- lm(score ~ ., 
+               data = df_ML2)
+
 ```
 
 
+```{r}
+#| results: asis
+
+stargazer(model, model_lm, type = 'html')
+```
+
+
+```{r}
+library(margins)
+m <- margins(model)
+ame_result <- summary(m)
+ame_result
+```
+
+
+
+
+```{r}
+ggplot(data = ame_result |> 
+         filter( p <= .1)) +
+  geom_point( aes(y = reorder(factor, AME), x = AME) ) +
+  geom_errorbar(aes(y = reorder(factor, AME), 
+                    xmin = lower, xmax = upper),
+                width = .5) +
+  geom_vline(xintercept = 0, color = 'red', linetype = 2) +
+  labs(y = "") +
+  scale_x_continuous(breaks = seq(-1,.4,.2),
+                     labels = scales::percent)
+```
+
+```{r}
+df_clean |> 
+  count(credit_card)
+```
+
+
+```{r}
+df_ML |> 
+  ggplot(aes(x = over_confidence,
+             fill = factor(score_pf))) +
+  geom_density(alpha = .25) + 
+  facet_grid(q_yes ~ .)
+```
+
+```{r}
+df_ML |> 
+  ggplot(aes(x = over_confidence,
+             fill = factor(score_pf))) +
+  geom_density(alpha = .25) +
+  facet_wrap(prof_program_TF ~.)
+```
+
+
+# Random Forest
+
+
+```{r}
+df_clean |> 
+  ggplot(aes(x = over_confidence, y = major)) +
+  geom_boxplot() 
+```
+
+
+```{r}
+library(rpart)
+library(rpart.plot)
+
+rf <- rpart(score_pf ~ .,
+            data = df_ML, method  = "class")
+rf
+printcp(rf)
+rpart.plot(rf)
+
+```
+
+
+```{r}
+
+rf_reg <- rpart(score ~ .,
+            data = df_ML2, method  = "anova")
+rf_reg
+printcp(rf_reg)
+rpart.plot(rf_reg)
+
+```
 
 
 # Significance of the Study
