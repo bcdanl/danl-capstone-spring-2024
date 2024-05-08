@@ -348,6 +348,47 @@ major_2_count <- df_clean |>
 
 
 ```{r}
+cor(df_clean$score, df_clean$score_scaled)
+```
+
+```{r}
+cor(df_clean$score, df_clean$self_eval)
+```
+
+
+```{r}
+cor(df_clean$score, df_clean$self_eval_scaled)
+```
+
+
+```{r}
+cor(df_clean$score, df_clean$over_confidence)
+```
+
+
+
+```{r}
+df_clean |> 
+  ggplot() +
+  geom_histogram(aes(x =  self_eval_scaled),
+                 bins = 5)
+```
+
+```{r}
+df_clean |> 
+  ggplot() +
+  geom_histogram(aes(x = score_scaled),
+                 bins = 5)
+```
+
+```{r}
+df_clean |> 
+  ggplot() +
+  geom_histogram(aes(x = over_confidence),
+                 bins = 15)
+```
+
+```{r}
 df_clean_sum <- skim(df_clean) |> 
   arrange(-n_missing)
 ```
